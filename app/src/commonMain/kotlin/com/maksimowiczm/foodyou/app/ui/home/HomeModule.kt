@@ -18,6 +18,7 @@ fun Module.home() {
             foodEntryRepository = get(),
             manualEntryRepository = get(),
             mealsPreferencesRepository = userPreferencesRepository(),
+            copyToNextDayUseCase = get()
         )
     }
     viewModel {

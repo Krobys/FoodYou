@@ -19,12 +19,14 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -63,6 +65,8 @@ internal fun MealCard(
     onQuickAdd: () -> Unit,
     onEditEntry: (MealEntryModel) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
+    onCopyMeal: () -> Unit,
+    onCopyEntry: (MealEntryModel) -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -88,16 +92,33 @@ internal fun MealCard(
 
     FoodYouHomeCard(modifier = modifier, onClick = onAddFood, onLongClick = onLongClick) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text(
-                text = meal.name,
-                style = MaterialTheme.typography.headlineMediumEmphasized,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = timeString,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = meal.name,
+                        style = MaterialTheme.typography.headlineMediumEmphasized,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = timeString,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (meal.foods.isNotEmpty()) {
+                    IconButton(onClick = onCopyMeal) {
+                        Icon(
+                            imageVector = Icons.Outlined.ContentCopy,
+                            contentDescription = stringResource(Res.string.action_copy_to_tomorrow),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
 
             Spacer(Modifier.height(16.dp))
 
@@ -105,6 +126,7 @@ internal fun MealCard(
                 foods = meal.foods,
                 onEditEntry = onEditEntry,
                 onDeleteEntry = onDeleteEntry,
+                onCopyEntry = onCopyEntry,
                 modifier =
                     Modifier.fillMaxWidth()
                         .clip(MaterialTheme.shapes.medium)
@@ -208,6 +230,7 @@ private fun FoodContainer(
     foods: List<MealEntryModel>,
     onEditEntry: (MealEntryModel) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
+    onCopyEntry: (MealEntryModel) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -231,6 +254,7 @@ private fun FoodContainer(
                     entry = entry,
                     onEditEntry = onEditEntry,
                     onDeleteEntry = onDeleteEntry,
+                    onCopyEntry = onCopyEntry,
                     shape = shape,
                 )
             }
@@ -269,6 +293,7 @@ private fun FoodContainerItem(
     entry: MealEntryModel,
     onEditEntry: (MealEntryModel) -> Unit,
     onDeleteEntry: (MealEntryModel) -> Unit,
+    onCopyEntry: (MealEntryModel) -> Unit,
     shape: Shape,
     modifier: Modifier = Modifier,
 ) {
@@ -292,6 +317,13 @@ private fun FoodContainerItem(
                     coroutineScope.launch {
                         sheetState.hide()
                         onDeleteEntry(entry)
+                        showBottomSheet = false
+                    }
+                },
+                onCopy = {
+                    coroutineScope.launch {
+                        onCopyEntry(entry)
+                        sheetState.hide()
                         showBottomSheet = false
                     }
                 },
@@ -344,6 +376,7 @@ private fun BottomSheetContent(
     entry: MealEntryModel,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
+    onCopy: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var showDeleteDialog by rememberSaveable { mutableStateOf(false) }
@@ -370,6 +403,12 @@ private fun BottomSheetContent(
             headlineContent = { Text(stringResource(Res.string.action_edit_entry)) },
             modifier = Modifier.clickable { onEdit() },
             leadingContent = { Icon(imageVector = Icons.Default.Edit, contentDescription = null) },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+        )
+        ListItem(
+            headlineContent = { Text(stringResource(Res.string.action_copy_to_tomorrow)) },
+            modifier = Modifier.clickable { onCopy() },
+            leadingContent = { Icon(imageVector = Icons.Outlined.ContentCopy, contentDescription = null) },
             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         )
         ListItem(

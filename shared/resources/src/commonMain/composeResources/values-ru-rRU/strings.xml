@@ -152,6 +152,9 @@
     <string name="action_paste_url">Вставить URL</string>
     <string name="action_browse_open_food_facts">Найти в Open Food Facts</string>
     <string name="action_copy">Скопировать</string>
+    <string name="action_copy_to_tomorrow">Скопировать на завтра</string>
+    <string name="message_copied_to_tomorrow">Скопировано на завтра</string>
+    <string name="action_undo">Отменить</string>
     <string name="action_choose_other_date">Выбрать другую дату</string>
     <string name="action_show_more" description="Show more settings/options/advanced settings">Показать больше</string>
     <string name="action_download_product">Загрузить продукт</string>

@@ -11,15 +11,20 @@ import com.maksimowiczm.foodyou.fooddiary.domain.entity.ManualDiaryEntry
 import com.maksimowiczm.foodyou.fooddiary.domain.entity.MealsPreferences
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.FoodDiaryEntryRepository
 import com.maksimowiczm.foodyou.fooddiary.domain.repository.ManualDiaryEntryRepository
+import com.maksimowiczm.foodyou.fooddiary.domain.usecase.CopyResult
+import com.maksimowiczm.foodyou.fooddiary.domain.usecase.CopyToNextDayUseCase
 import com.maksimowiczm.foodyou.fooddiary.domain.usecase.ObserveDiaryMealsUseCase
 import kotlin.math.roundToInt
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -29,6 +34,7 @@ internal class MealsCardsViewModel(
     private val observeDiaryMealsUseCase: ObserveDiaryMealsUseCase,
     private val foodEntryRepository: FoodDiaryEntryRepository,
     private val manualEntryRepository: ManualDiaryEntryRepository,
+    private val copyToNextDayUseCase: CopyToNextDayUseCase,
     mealsPreferencesRepository: UserPreferencesRepository<MealsPreferences>,
 ) : ViewModel() {
     private val dateState = MutableStateFlow<LocalDate?>(null)
@@ -52,6 +58,9 @@ internal class MealsCardsViewModel(
             initialValue = runBlocking { _layout.first() },
         )
 
+    private val _copyEvent = MutableSharedFlow<CopyEvent>()
+    val copyEvent: SharedFlow<CopyEvent> = _copyEvent.asSharedFlow()
+
     fun setDate(date: LocalDate) {
         viewModelScope.launch { dateState.value = date }
     }
@@ -64,6 +73,45 @@ internal class MealsCardsViewModel(
             }
         }
     }
+
+    fun onCopyMealToNextDay(mealId: Long) {
+        viewModelScope.launch {
+            val date = dateState.value ?: return@launch
+            val result = copyToNextDayUseCase.copyMealToNextDay(mealId, date)
+            if (!result.isEmpty) {
+                _copyEvent.emit(CopyEvent.Copied(result))
+            }
+        }
+    }
+
+    fun onCopyEntryToNextDay(model: MealEntryModel) {
+        viewModelScope.launch {
+            val date = dateState.value ?: return@launch
+            val result = when (model) {
+                is FoodMealEntryModel -> {
+                    val entry = foodEntryRepository.observe(model.id).first() ?: return@launch
+                    copyToNextDayUseCase.copyFoodEntryToNextDay(entry, date)
+                }
+                is ManualMealEntryModel -> {
+                    val entry = manualEntryRepository.observe(model.id).first() ?: return@launch
+                    copyToNextDayUseCase.copyManualEntryToNextDay(entry, date)
+                }
+            }
+            if (!result.isEmpty) {
+                _copyEvent.emit(CopyEvent.Copied(result))
+            }
+        }
+    }
+
+    fun onUndoCopy(result: CopyResult) {
+        viewModelScope.launch {
+            copyToNextDayUseCase.undoCopy(result)
+        }
+    }
+}
+
+sealed interface CopyEvent {
+    data class Copied(val result: CopyResult) : CopyEvent
 }
 
 private fun DiaryMeal.toMealModel(): MealModel =
